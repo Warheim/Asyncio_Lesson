@@ -6,9 +6,10 @@ from db import Session, People, Base, engine
 
 async def paste_to_db(people_list):
     async with Session() as session:
-        people_list = [People(json=item) for item in people_list]
-        session.add_all(people_list)
+        people_list_orm = [People(json=item) for item in people_list]
+        session.add_all(people_list_orm)
         await session.commit()
+        print(people_list[-1].get('url'))
 
 
 async def make_request(people_id: int, client: ClientSession):
@@ -24,6 +25,7 @@ MAX_REQUESTS = 10
 
 
 async def main():
+    tasks = []
     async with ClientSession() as session:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
@@ -34,7 +36,12 @@ async def main():
                 coro = make_request(people_id=people_id, client=session)
                 cors.append(coro)
             people_list = await asyncio.gather(*cors)
-            await paste_to_db(people_list)
+            for_db_task = paste_to_db(people_list)
+            paste_to_db_task = asyncio.create_task(for_db_task)
+            tasks.append(paste_to_db_task)
+    tasks = asyncio.all_tasks() - {asyncio.current_task()}
+    for task in tasks:
+        await task
 
 
 asyncio.run(main())

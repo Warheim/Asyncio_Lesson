@@ -3,3 +3,5 @@ asyncio
 sqlalchemy
 datetime
 more-itertools
+asyncpg
+python-dotenv
